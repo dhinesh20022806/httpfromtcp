@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
+	"net"
 )
 
-func getLinesChannel(f io.ReadCloser) <- chan string {
+func getLinesChannel(f io.ReadCloser) <-chan string {
 
 	out := make(chan string, 1)
 
@@ -17,33 +17,30 @@ func getLinesChannel(f io.ReadCloser) <- chan string {
 		defer f.Close()
 		defer close(out)
 
+		str := ""
+		for {
+			data := make([]byte, 8)
+			n, err := f.Read(data)
+			if err != nil {
+				log.Fatal("error", "error", err)
+				break
+			}
+			data = data[:n]
 
-	str := ""
-	for {
-		data := make([]byte, 8)
-		n, err := f.Read(data)
-		if err != nil {
-			log.Fatal("error", "error", err)
-			break
+			if i := bytes.IndexByte(data, '\n'); i != -1 {
+				str += string(data[:i])
+				data = data[i+1:]
+				out <- str
+				str = ""
+			}
+
+			str += string(data)
+
 		}
-		data = data[:n]
 
-      if i := bytes.IndexByte(data, '\n'); i != -1 {
-		str += string(data[:i])
-		data = data[i + 1:]
-        out <- str
-		str = ""
-	  } 
-
-	  str += string(data)
-		
-
-	}
-
-	if len(str) != 0 {
-		out <- str
-	}
-
+		if len(str) != 0 {
+			out <- str
+		}
 
 	}()
 
@@ -53,19 +50,28 @@ func getLinesChannel(f io.ReadCloser) <- chan string {
 
 func main() {
 
-	f, err := os.Open("message.txt")
+	listener, err := net.Listen("tcp", ":42069")
 
 	if err != nil {
 		log.Fatal("error", "error", err)
 	}
 
-	lines := getLinesChannel(f)
+	for {
+		conn, err := listener.Accept()
 
-	for line := range lines {
+		if err != nil {
 
-		fmt.Printf("read: %s\n", line)
+			log.Fatal("error", "error", err)
+			break
+		}
 
+		lines := getLinesChannel(conn)
+
+		for line := range lines {
+
+			fmt.Printf("read: %s\n", line)
+
+		}
 	}
-
 
 }
