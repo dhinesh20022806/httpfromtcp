@@ -4,13 +4,15 @@ import (
 	"bytes"
 	"fmt"
 )
-type Headers map[string]string
+type Headers struct {
+	headers map[string]string
+}
 
 var rn = []byte("\r\n")
 
 
-func NewHeaders() Headers {
-	return map[string]string{}
+func NewHeaders() *Headers {
+	return &Headers { map[string]string{}}
 }
 
 func parseHeader(fieldLine []byte) (string, string, error){
