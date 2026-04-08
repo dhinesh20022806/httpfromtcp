@@ -3,16 +3,47 @@ package headers
 import (
 	"bytes"
 	"fmt"
+	"strings"
 )
-type Headers struct {
-	headers map[string]string
+
+func isToken (str []byte) bool {
+
+	for _, ch := range str {
+		found := false
+
+		if ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z' || ch >= '0' && ch <= '9' {
+			found = true
+			continue;
+		}
+		switch ch {
+		case '!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^', '_', '`', '|', '~':
+			found = true
+		}
+
+		if !found {
+			return false
+		}
+	}
+
+	return true
 }
 
 var rn = []byte("\r\n")
 
+type Headers struct {
+	headers map[string]string
+}
 
 func NewHeaders() *Headers {
-	return &Headers { map[string]string{}}
+	return &Headers { headers: map[string]string{},}
+}
+
+func (h *Headers) Get(name string) string {
+	return h.headers[strings.ToLower(name)]
+}
+
+func (h *Headers) Set(name, value string) {
+	h.headers[strings.ToLower(name)] = value
 }
 
 func parseHeader(fieldLine []byte) (string, string, error){
@@ -35,7 +66,7 @@ func parseHeader(fieldLine []byte) (string, string, error){
 
 }
 
-func (h Headers) Parse(data []byte) (int,  bool,  error){
+func (h *Headers) Parse(data []byte) (int,  bool,  error){
 
 	read := 0
     isDone := false
@@ -56,14 +87,19 @@ func (h Headers) Parse(data []byte) (int,  bool,  error){
 		name, value, err := parseHeader(data[read:read + idx])
 
 		if err != nil {
-
 			return 0, false, err
-			
+		}
+
+		if !isToken([]byte(name)){
+
+			return 0, false, fmt.Errorf("Invalid Token!")
 		}
 		fmt.Print(idx, "  idx", read, "  read")
 
 		read += idx + len(rn)
-		h[name] = value
+
+
+		h.Set(name, value)
 
 
 	}
