@@ -61,7 +61,6 @@ func parseHeader(fieldLine []byte) (string, string, error){
 	name := parts[0]
 	value := bytes.TrimSpace(parts[1])
 
-	fmt.Print(string(value), "value in string")
 
 	if bytes.HasSuffix(name, []byte(" ")){
 		return "", "", fmt.Errorf("malformed field name")
@@ -92,6 +91,7 @@ func (h *Headers) Parse(data []byte) (int,  bool,  error){
 		name, value, err := parseHeader(data[read:read + idx])
 
 		if err != nil {
+			
 			return 0, false, err
 		}
 
@@ -99,7 +99,6 @@ func (h *Headers) Parse(data []byte) (int,  bool,  error){
 
 			return 0, false, fmt.Errorf("Invalid Token!")
 		}
-		fmt.Print(idx, "  idx", read, "  read")
 
 		read += idx + len(rn)
 
