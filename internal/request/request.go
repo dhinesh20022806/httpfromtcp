@@ -3,6 +3,7 @@ package request
 import (
 	"bytes"
 	"fmt"
+	"http-server/internal/headers"
 	"io"
 	"slices"
 )
@@ -32,17 +33,20 @@ type parserState string
 const (
 	StateInit parserState = "init"
 	StateDone parserState = "done"
+	StateHeaders parserState = "headers"
 	StateError parserState = "error"
 )
 
 type Request struct {
 	RequestLine RequestLine
+	Headers     *headers.Headers
 	state       parserState
 }
 
 func newRequest() *Request {
 	return &Request{
 		state: StateInit,
+		Headers: headers.NewHeaders(),
 	}
 }
 
@@ -97,13 +101,14 @@ func (r *Request) parse(data []byte) (int, error) {
 
 	read := 0
 outer:
-	for {
 
+	for {
+       currentData := data[read:]
 		switch r.state {
 		case StateError:
 			return 0, ERROR_REQUEST_IN_ERROR_STATE
 		case StateInit:
-			rl, n, err := parseRequestLine(data[read:])
+			rl, n, err := parseRequestLine(currentData)
 			if err != nil {
 				r.state = StateError
 				return 0, err
@@ -113,10 +118,34 @@ outer:
 			}
 			r.RequestLine = *rl
 			read += n
+			
+			r.state = StateHeaders
 
-			r.state = StateDone
+		case StateHeaders:
+			fmt.Println(string(data[read:]), read)
+			n, done, err := r.Headers.Parse(currentData)
+
+			if err != nil {
+				r.state = StateError
+				return 0, err
+			}
+
+
+			if n == 0 {
+				break outer
+			}
+
+			if done {
+				r.state = StateDone;
+				read += n
+				return read, nil
+			}
+			read += n
+
 		case StateDone:
 			break outer
+		default:
+			panic("somehow we have programed prooly")
 		}
 
 	}
@@ -148,7 +177,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 		bufLen += n
 
-		readN, err := request.parse(buf[:bufLen+n])
+		readN, err := request.parse(buf[:bufLen])
 
 		if err != nil {
 			return nil, err
