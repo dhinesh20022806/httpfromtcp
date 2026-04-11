@@ -51,6 +51,12 @@ func (h *Headers) Set(name, value string) {
 	}
 }
 
+func (h *Headers) ForEach(cb func(n, v string)){
+	for n, v := range h.headers {
+		cb(n, v)
+	}
+}
+
 func parseHeader(fieldLine []byte) (string, string, error){
 	parts := bytes.SplitN(fieldLine, []byte(":"), 2)
 
